@@ -1,6 +1,8 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import kassalService from './service.js';
+import { generateMealList, extractFoodNames } from './geminiservice.js';
+import { generateMealPlan } from './MealPlan.js';
 
 dotenv.config();
 
@@ -30,6 +32,19 @@ app.get('/products', async (req, res) => {
   }
 });
 
+app.get('/mealplan', async (req, res) => {
+  const { goal } = req.query;
+  if (!goal) return res.status(400).json({ error: 'Missing ?goal=' });
+
+  try {
+    const data = await generateMealPlan(goal);
+    res.json(data);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Meal plan generation failed' });
+  }
+});
+
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`server running at http://localhost:${PORT}`);
 });

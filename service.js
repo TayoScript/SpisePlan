@@ -8,12 +8,12 @@ const headers = {
   Authorization: `Bearer ${process.env.KASSAL_API_KEY}`
 };
 
-async function getProducts(search) {
+// General product search
+async function searchProducts(search) {
   const res = await axios.get(`${API_BASE}/products`, {
     headers,
-    params: { search, size: 50 }
+    params: { search, size: 5 }
   });
-
   return res.data.data;
 }
 
@@ -22,6 +22,7 @@ function getNutrient(nutritionArray, code) {
   return found ? found.amount : null;
 }
 
+// Filter by nutrition
 function matchesNutrition(product, kcal, protein, fat, carbs) {
   const n = product.nutrition;
   if (!Array.isArray(n)) return false;
@@ -41,14 +42,16 @@ function matchesNutrition(product, kcal, protein, fat, carbs) {
   );
 }
 
+// Nutrition filter search
 async function getProductsWithNutritionFilter(search, kcal, protein, fat, carbs) {
-  const products = await getProducts(search);
-
+  const products = await searchProducts(search);
   return products.filter(product =>
     matchesNutrition(product, kcal, protein, fat, carbs)
   );
 }
 
+
 export default {
+  searchProducts,
   getProductsWithNutritionFilter
 };
