@@ -1,6 +1,6 @@
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { PromptTemplate } from "@langchain/core/prompts";
-import { LLMChain } from 'langchain/chains';
+import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { StructuredOutputParser } from 'langchain/output_parsers';
 import kassalService from './service.js';
 import dotenv from 'dotenv';
 
@@ -11,44 +11,36 @@ const model = new ChatGoogleGenerativeAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
+export function extractFoodNames(geminiText) {
+  return geminiText
+    .split('\n')
+    .filter(line => line.includes('–') || line.includes('-'))
+    .map(line => line.split(/[–-]/)[0].trim());
+}
 
-const prompt = new PromptTemplate({
-  inputVariables: ['goal'],
-  template: `
-Du er en måltidsplanlegger. Basert på brukerens mål, lag en enkel liste med måltider og mellommåltider som til sammen dekker målet (f.eks. 2000 kcal).
-
-List opp hvert element slik:
-- [Matnavn] – [Kalorier]
-
-Mål: {goal}
-`
+const outputParser = StructuredOutputParser.fromNamesAndDescriptions({
+  meals: 'Liste med måltider og kalorier, f.eks: [{ "food": "Havregrøt", "calories": 350 }]',
 });
 
+const prompt = ChatPromptTemplate.fromTemplate(
+  `Du er en måltidsplanlegger. Lag en måltidsplan som totalt gir omtrent {goal}.
+Svar som en liste i JSON-format, der hvert element er et objekt med feltene:
+- "food": Bare et navn på matvaren. For eksempel " Havregrøt med bær" blir "Havregrøt" "bær" 
+- "calories": kalorier som tall
 
-const chain = new LLMChain({ llm: model, prompt });
+{format_instructions}`
+);
+
+const chain = prompt.pipe(model).pipe(outputParser);
 
 export async function generateMealPlan(goal) {
-  const response = await chain.call({ goal });
+  const response = await chain.invoke({
+    goal,
+    format_instructions: outputParser.getFormatInstructions(),
+  });
 
-  const lines = response.text
-    .split('\n')
-    .filter(line => line.includes('–') || line.includes('-'));
-
-  const foodNames = lines.map(line =>
-    line.split(/[–-]/)[0].trim()
-  );
-
-  const result = [];
-
-  for (const food of foodNames) {
-    const products = await kassalService.searchProducts(food);
-    if (products.length) {
-      result.push({ food, options: products });
-    }
-  }
 
   return {
-    plan: lines,
-    result
+    plan: response.meals, // structured list like: [{ food: 'Havregrøt', calories: 350 }]
   };
 }
