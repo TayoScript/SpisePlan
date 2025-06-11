@@ -19,19 +19,29 @@ export function extractFoodNames(geminiText) {
 }
 
 const outputParser = StructuredOutputParser.fromNamesAndDescriptions({
-  meals: 'Liste med måltider og kalorier, f.eks: [{ "food": "Havregrøt", "calories": 350 }]',
+  meals: 'Liste med måltider og kalorier, f.eks: [{ "food": "Havregryn", "calories": 350 }]',
 });
 
 const prompt = ChatPromptTemplate.fromTemplate(
-  `Du er en måltidsplanlegger. Lag en måltidsplan som totalt gir omtrent {goal}.
+  `Du er en måltidsplanlegger. Lag en måltidsplan som totalt gir omtrent {goal} kalorier.
+
+VIKTIG: Hver matvare må være separat. Ikke kombiner matvarer i samme objekt. Skriv frukter i flertall. Banan - Bananer
+
+Eksempler på RIKTIG format:
+- I stedet for "Egg og bacon" → lag to separate objekter: "Egg" og "Bacon"  
+- I stedet for "Laks med grønnsaker" → lag to separate objekter: "Laks" og "Grønnsaker"
+- I stedet for "Frukt og nøtter" → lag to separate objekter: "Frukt" og "Nøtter"
+
 Svar som en liste i JSON-format, der hvert element er et objekt med feltene:
-- "food": Bare et navn på matvaren. For eksempel " Havregrøt med bær" blir "Havregrøt" "bær" 
+- "food": Bare ett enkelt matvare-navn (ikke kombinasjoner)
 - "calories": kalorier som tall
 
 {format_instructions}`
 );
 
+
 const chain = prompt.pipe(model).pipe(outputParser);
+
 
 export async function generateMealPlan(goal) {
   const response = await chain.invoke({
@@ -41,6 +51,6 @@ export async function generateMealPlan(goal) {
 
 
   return {
-    plan: response.meals, // structured list like: [{ food: 'Havregrøt', calories: 350 }]
+    plan: response.meals, // structured list like: [{ food: 'Havregryn', calories: 350 }]
   };
 }

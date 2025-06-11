@@ -42,12 +42,29 @@ function matchesNutrition(product, kcal, protein, fat, carbs) {
   );
 }
 
-// Nutrition filter search
 async function getProductsWithNutritionFilter(search, kcal, protein, fat, carbs) {
   const products = await searchProducts(search);
-  return products.filter(product =>
-    matchesNutrition(product, kcal, protein, fat, carbs)
-  );
+  
+  console.log('Total products before filtering:', products.length);
+
+  const irrelevantCategories = new Set([
+    'barneprodukter', 'barnedessert', 'barnemat',
+    'kjæledyr', 'kattemat', 'hundemat',
+    'tilbehør', 'rengjøring',
+    'kosmetikk', 'hudpleie'
+  ]);
+
+  return products.filter(product => {
+    const nutritionMatch = matchesNutrition(product, kcal, protein, fat, carbs);
+    const categoryMatch = !(
+  product.category &&
+  product.category.some(cat => irrelevantCategories.has(cat.name.toLowerCase()))
+);
+    
+    console.log(`Product: ${product.name || product.title}, Nutrition: ${nutritionMatch}, Category: ${categoryMatch}`);
+    
+    return nutritionMatch && categoryMatch;
+  });
 }
 
 
